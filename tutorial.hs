@@ -1,7 +1,7 @@
 -- Imports must be at the start of the file.
--- This enforces all functions in Data.Map to be called like this M.{funcName}, this is usually used to avoid clashes between functions that have the same name between different modules
 import Data.Function (on)
 import Data.List
+-- This enforces all functions in Data.Map to be called like this M.{funcName}, this is usually used to avoid clashes between functions that have the same name between different modules
 import Data.Map qualified as M
 import Data.Char
 import qualified Data.Set as S
@@ -42,7 +42,7 @@ modifiedName :: String
 modifiedName = 'H' : myName -- but cons operator is instantaneous
 
 listSugar :: Bool
-listSugar = [1, 2, 3] == [1, 2, 3] -- list literal is syntatic sugar to list plus cons operator fro elements
+listSugar = [1, 2, 3] == 1 : 2 : 3 : [] -- list literal is syntatic sugar to list plus cons operator fro elements
 
 specificInt :: Integer
 specificInt = myList !! 3
@@ -134,7 +134,7 @@ listCompPatMat xs = [a + b | (a, b) <- xs]
 
 head' :: [a] -> a
 head' [] = error "Can't call head on an empty list." -- generates a runtime error
-head' (x : _) = x -- when bindng with more than one variable we have to surrond them in parantheses, this is not to be confused with tuples
+head' (x : _) = x -- when bindng with more than one variable we have to surround them in parantheses, this is not to be confused with tuples
 
 tell :: (Show a) => [a] -> String
 tell [] = "The list is empty"
@@ -292,7 +292,7 @@ divideByTen = (/ 10) -- Infix functions can be partially applied by using sectio
 isUpperAlphanum :: Char -> Bool
 isUpperAlphanum = (`elem` ['A' .. 'Z'])
 
-applyTwice :: (t -> t) -> t -> t -- HEre parantheses in the type declaration are required to show that the first parameter is actually a function
+applyTwice :: (t -> t) -> t -> t -- Here parantheses in the type declaration are required to show that the first parameter is actually a function
 applyTwice f x = f (f x)
 
 zipWith' :: (t1 -> t2 -> t3) -> [t1] -> [t2] -> [t3]
@@ -467,11 +467,11 @@ data Person = Person {
   flavor :: String
 } deriving (Show)
 
--- Type parameters (Like Value Constructors take some value parameters and produce a new value, type constructors take type parameters to produce new types)
--- This is an example fo a type constructor with type parameters:  data Maybe a = Nothing | Just a  (Nothing and Just are type constructors, and a is the type parameter)
--- -t Nothing => Nothing :: Maybe a   as you can see Nothing is polymorphic and we can use it as a parameter with any maybe type like maybe Int or Maybe Char
--- The list type isa type constrcutor as it takes a type parameter to produce a concrete type like [Int] or [Char]
--- -t [] => Nothing :: Maybe a   It's also polymorphic
+-- Type Constructors (Like Value Constructors take some value parameters and produce a new value, type constructors take type parameters to produce new types)
+-- This is an example of a type constructor with type parameters:  data Maybe a = Nothing | Just a  (Nothing and Just are type constructors, and a is the type parameter)
+-- :t Nothing => Nothing :: Maybe a   as you can see Nothing is polymorphic and we can use it as a parameter with any maybe type like maybe Int or Maybe Char
+-- The list type is a type constructor as it takes a type parameter to produce a concrete type like [Int] or [Char]
+-- :t [] => Nothing :: Maybe a   It's also polymorphic
 
 -- Using Type Constructors is like generics in Java or templates in C++
 
@@ -499,7 +499,7 @@ data Car = Car {
   -- data Bool = False | True deriving (Ord) here since False is defined before True then False < True
   -- same with data Maybe a = Nothing | Just a  Nothing < Just anything, but if we use Just 3 `compare` Just 2 then we compare the two values, but the value of just must be an instance of Ord to compare them
 
--- All value constructors are nullary (no parameters) so it cna be part of the Enum typeclass which will make it have a predecessor and a successor
+-- All value constructors are nullary (no parameters) so it can be part of the Enum typeclass which will make it have a predecessor and a successor
 data Day = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
             deriving (Eq, Ord, Show, Read, Bounded, Enum) -- Bounded are for things that have a lowest and highest possible value
 
@@ -515,7 +515,7 @@ type PhoneBook = [(Name,PhoneNumber)]
 type AssocList k v = [(k,v)]
 
 -- We could partially apply type parameters just like functions
-type IntMap = M.Map -- This is the same as type IntMap v = M.Map Int v
+type IntMap = M.Map Int -- This is the same as type IntMap v = M.Map Int v
 
 -- Either data type is used when we want to encapsulate something that can fail in different ways and we want to show the failures not just use nothing like Maybe does
 -- data Either a b = Left a | Right b deriving (Eq, Ord, Read, Show)   This is how it's roughly defined Left is for failing results and Right for correct results
@@ -548,3 +548,188 @@ lockerLookup lockerNumber map =
 
 
 -- Recursive data structures
+
+-- Here we create our own recursive List type
+data List a = Empty | Cons a (List a) deriving (Show, Read, Eq, Ord)
+-- We could use it like this Cons 4 (Cons 5 Empty) or like this to resemble the infix : cons operator   4 `Cons` (5 `Cons` Empty)
+
+-- Here we can create an infix value constructor and we define their assosication and order using fixity declaratins
+infixr 5 :-:
+data ListInfix a = EmptyInf | a :-: (ListInfix a) deriving (Show, Read, Eq, Ord)
+-- We could use it like this 3 :-: 4 :-: 5 :-: EmptyInf
+
+-- Here we create our own adding lists operator
+infixr 5  .++
+(.++) :: ListInfix a -> ListInfix a -> ListInfix a 
+EmptyInf .++ ys = ys
+(x :-: xs) .++ ys = x :-: (xs .++ ys)
+-- We could pattern match here because :-: is a value constructor just like the regular cons :
+
+-- We'll create our own binary tree recursive type
+data Tree a = EmptyTree | Node a (Tree a) (Tree a) deriving (Show, Read, Eq)
+
+-- Utility function that creats a singleton tree
+treeSingleton :: a -> Tree a
+treeSingleton x = Node x EmptyTree EmptyTree
+
+-- Function that inserts an element in the tree
+treeInsert :: (Ord a) => a -> Tree a -> Tree a
+treeInsert x EmptyTree = treeSingleton x
+treeInsert x (Node a left right) 
+    | x == a = Node x left right
+    | x < a  = Node a (treeInsert x left) right
+    | x > a  = Node a left (treeInsert x right)
+
+-- Function that checks whether element exists in the tree
+treeElem :: (Ord a) => a -> Tree a -> Bool
+treeElem _ EmptyTree = False
+treeElem x (Node a left right)
+  | x == a = True
+  | x < a = treeElem x left
+  | x > a = treeElem x right
+
+-- Function that takes a list and creates a tree from it
+initTree :: (Ord a) => [a] -> Tree a
+initTree = foldr treeInsert EmptyTree
+
+
+-- TypeClasses 102
+
+-- This is how the Eq typeclass is defined
+-- class Eq a where
+--    (==) :: a -> a -> Bool
+--    (/=) :: a -> a -> Bool
+--    x == y = not (x /= y)
+--    x /= y = not (x == y)
+
+{-
+  When we use class we are defining a typeclass and the parameter is our type variable,
+  and we don't need to implement functions inside just like an interface we only define a contract,
+  with functions having type declarations, but in this case we implemented them with mutual recursion.
+-} 
+
+data TrafficLight = Red | Yellow | Green
+
+-- this makes our type an instance of the Eq typeclass, this can help us doing custom equality check logic and not using the default way of using deriving.
+instance Eq TrafficLight where
+    Red == Red = True
+    Green == Green = True
+    Yellow == Yellow = True
+    _ == _ = False
+
+{- since our Eq type class used mutual recursion then we can implement only one of those functions
+   == , /= , but if there was no implementation then we had to implement both functions when making
+   a type an instance of the Eq typeclass, this is called the minimal complete definition
+-}
+
+-- Again we are using custome instance to modify the default implementation of deriving show
+instance Show TrafficLight where
+    show Red = "Red light"
+    show Yellow = "Yellow light"
+    show Green = "Green light"
+
+-- We could also have typeclasses that are subclasses of other typeclasses like the Num declaration: class (Eq a) => Num a where ...
+
+-- Here we want to make an instance of a non-concrete type like maybe so we introduce a type variable m and we make sure that implements the Eq typeclass
+{-
+  instance (Eq m) => Eq (Maybe m) where
+    Just x == Just y = x == y
+    Nothing == Nothing = True
+    _ == _ = False
+-}
+
+-- class constraints in class declarations are used for making a typeclass a subclass of another typeclass and class constraints in instance declarations are used to express requirements about the contents of some type
+
+-- implementing javascript-ish weak typing
+
+class YesNo a where
+    yesno :: a -> Bool
+
+instance YesNo Int where
+    yesno :: Int -> Bool
+    yesno 0 = False
+    yesno _ = True
+
+instance YesNo [a] where
+    yesno :: [a] -> Bool
+    yesno [] = False
+    yesno _ = True
+
+instance YesNo Bool where
+    yesno :: Bool -> Bool
+    yesno = id  -- id is a function that takes a parameter and returns it exactly the same.
+
+instance YesNo (Maybe a) where
+    yesno :: Maybe a -> Bool
+    yesno (Just _) = True
+    yesno Nothing = False
+
+instance YesNo (Tree a) where
+    yesno :: Tree a -> Bool
+    yesno EmptyTree = False
+    yesno _ = True
+
+instance YesNo TrafficLight where
+    yesno :: TrafficLight -> Bool
+    yesno Red = False
+    yesno _ = True
+
+{-  What we have done here is basically created a typeclass YesNo and a function yesno that returns true-ish and
+    false-ish values and created instances for different concrete types and how would they return
+    values if they implement the YesNo typeclass.
+-}
+
+yesnoIf :: (YesNo y) => y -> a -> a -> a
+yesnoIf yesnoVal yesResult noResult = if yesno yesnoVal then yesResult else noResult
+
+-- Functor typeclass
+
+-- A functor typeclass is for things that can be mapped over like a list or a binary tree
+
+-- It's implemented like this: 
+{-
+class Functor f where
+    fmap :: (a -> b) -> f a -> f b
+-}
+
+-- Here f is not a concrete type but a type constructor that takes one type parameter
+
+-- how lists are implemented as functors is like this
+{-
+instance Functor [] where
+    fmap = map
+-}
+-- and map has the following type definition: map :: (a -> b) -> [a] -> [b]
+
+-- here is how Maybe is implemented as a functor:
+{-
+instance Functor Maybe where
+    fmap f (Just x) = Just (f x)
+    fmap f Nothing = Nothing
+-}
+
+-- This is how our own tree implementation gets instanced as a functor:
+instance Functor Tree where
+  fmap :: (a -> b) -> Tree a -> Tree b
+  fmap f EmptyTree = EmptyTree
+  fmap f (Node x leftsub rightsub) = Node (f x) (fmap f leftsub) (fmap f rightsub)
+
+
+-- Now how to make the Either a b an instance of functor, the problem it doesn't have one but two type parameters,
+-- we can partially apply Either by feeding it only one type parameter so it has a free parameter:
+-- here we applied the type of the Left since it's the error or the empty box and we don't need it's type
+{-
+instance Functor (Either a) where
+    fmap f (Right x) = Right (f x)
+    fmap f (Left x) = Left x
+-}
+
+-- Kinds of Types
+
+-- There is something called a kind of a type and we can find the kind of a type in ghci using :k
+
+-- in the case of :k Int it returns Int :: * which means that it is a concrete type
+-- in the case of :k Maybe it returns Maybe :: * -> * which means that that the Maybe type constructor takes one concrete type and then returns a concrete type
+-- doing :k Maybe Int return Maybe Int :: * since it's now a concrete type because we provided the type parameter to Maybe
+-- in the case of :k Either it returns Either :: * -> * -> it means that it takes two concrete types as type parameters to produce a concrete type
+-- type constructors are curried like functions and can be partially applied just like we did in the Functor instance of Either
